@@ -1,0 +1,203 @@
+{
+  "title": "録音から自動生成（下書き）",
+  "bpm": 112,
+  "scrollTime": 2.0,
+  "_note": "timeは録音から自動検出した打点(秒)。textはすべて仮で『テン』。口唱歌に合わせて書き換えてください。",
+  "notes": [
+    {
+      "time": 1.79,
+      "text": "テン",
+      "type": "don"
+    },
+    {
+      "time": 2.81,
+      "text": "テン",
+      "type": "don"
+    },
+    {
+      "time": 4.67,
+      "text": "テン",
+      "type": "don"
+    },
+    {
+      "time": 5.6,
+      "text": "テン",
+      "type": "don"
+    },
+    {
+      "time": 6.22,
+      "text": "テン",
+      "type": "don"
+    },
+    {
+      "time": 6.85,
+      "text": "テン",
+      "type": "don"
+    },
+    {
+      "time": 7.48,
+      "text": "テン",
+      "type": "don"
+    },
+    {
+      "time": 8.1,
+      "text": "テン",
+      "type": "don"
+    },
+    {
+      "time": 8.75,
+      "text": "テン",
+      "type": "don"
+    },
+    {
+      "time": 9.78,
+      "text": "テン",
+      "type": "don"
+    },
+    {
+      "time": 10.57,
+      "text": "テン",
+      "type": "don"
+    },
+    {
+      "time": 11.75,
+      "text": "テン",
+      "type": "don"
+    },
+    {
+      "time": 12.47,
+      "text": "テン",
+      "type": "don"
+    },
+    {
+      "time": 14.42,
+      "text": "テン",
+      "type": "don"
+    },
+    {
+      "time": 15.86,
+      "text": "テン",
+      "type": "don"
+    },
+    {
+      "time": 16.74,
+      "text": "テン",
+      "type": "don"
+    },
+    {
+      "time": 17.67,
+      "text": "テン",
+      "type": "don"
+    },
+    {
+      "time": 18.3,
+      "text": "テン",
+      "type": "don"
+    },
+    {
+      "time": 18.78,
+      "text": "テン",
+      "type": "don"
+    },
+    {
+      "time": 19.3,
+      "text": "テン",
+      "type": "don"
+    },
+    {
+      "time": 20.18,
+      "text": "テン",
+      "type": "don"
+    },
+    {
+      "time": 20.9,
+      "text": "テン",
+      "type": "don"
+    },
+    {
+      "time": 21.57,
+      "text": "テン",
+      "type": "don"
+    },
+    {
+      "time": 23.17,
+      "text": "テン",
+      "type": "don"
+    },
+    {
+      "time": 23.71,
+      "text": "テン",
+      "type": "don"
+    },
+    {
+      "time": 24.2,
+      "text": "テン",
+      "type": "don"
+    },
+    {
+      "time": 24.73,
+      "text": "テン",
+      "type": "don"
+    },
+    {
+      "time": 25.63,
+      "text": "テン",
+      "type": "don"
+    },
+    {
+      "time": 26.33,
+      "text": "テン",
+      "type": "don"
+    },
+    {
+      "time": 27.05,
+      "text": "テン",
+      "type": "don"
+    },
+    {
+      "time": 28.65,
+      "text": "テン",
+      "type": "don"
+    },
+    {
+      "time": 29.56,
+      "text": "テン",
+      "type": "don"
+    },
+    {
+      "time": 31.58,
+      "text": "テン",
+      "type": "don"
+    },
+    {
+      "time": 32.28,
+      "text": "テン",
+      "type": "don"
+    },
+    {
+      "time": 33.88,
+      "text": "テン",
+      "type": "don"
+    },
+    {
+      "time": 34.6,
+      "text": "テン",
+      "type": "don"
+    },
+    {
+      "time": 35.16,
+      "text": "テン",
+      "type": "don"
+    },
+    {
+      "time": 36.04,
+      "text": "テン",
+      "type": "don"
+    },
+    {
+      "time": 36.76,
+      "text": "テン",
+      "type": "don"
+    }
+  ]
+}

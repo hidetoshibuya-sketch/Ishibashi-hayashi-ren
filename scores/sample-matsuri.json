@@ -1,0 +1,31 @@
+{
+  "title": "祭囃子（サンプル）",
+  "bpm": 120,
+  "scrollTime": 2.0,
+  "notes": [
+    { "beat": 1,  "text": "テン",   "type": "don" },
+    { "beat": 2,  "text": "テン",   "type": "don" },
+    { "beat": 3,  "text": "テケ",   "type": "ka" },
+    { "beat": 3.5,"text": "テケ",   "type": "ka" },
+    { "beat": 4,  "text": "テン",   "type": "don" },
+
+    { "beat": 5,  "text": "ドン",   "type": "don" },
+    { "beat": 6,  "text": "カッ",   "type": "ka" },
+    { "beat": 7,  "text": "ドン",   "type": "don" },
+    { "beat": 7.5,"text": "ドン",   "type": "don" },
+    { "beat": 8,  "text": "カッ",   "type": "ka" },
+
+    { "beat": 9,  "text": "スットン","type": "don" },
+    { "beat": 10, "text": "スットン","type": "don" },
+    { "beat": 11, "text": "テケ",   "type": "ka" },
+    { "beat": 11.25,"text": "テケ", "type": "ka" },
+    { "beat": 11.5,"text": "テケ",  "type": "ka" },
+    { "beat": 11.75,"text": "テケ", "type": "ka" },
+    { "beat": 12, "text": "ドン",   "type": "don" },
+
+    { "beat": 13, "text": "テン",   "type": "don" },
+    { "beat": 14, "text": "テン",   "type": "don" },
+    { "beat": 15, "text": "テケテケ","type": "ka" },
+    { "beat": 16, "text": "ドン",   "type": "don" }
+  ]
+}

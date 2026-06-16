@@ -1,0 +1,424 @@
+<!DOCTYPE html>
+<html lang="ja">
+<head>
+<meta charset="utf-8" />
+<meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover, user-scalable=no" />
+<meta name="theme-color" content="#0e0e14" />
+<meta name="apple-mobile-web-app-capable" content="yes" />
+<meta name="apple-mobile-web-app-status-bar-style" content="black-translucent" />
+<link rel="manifest" href="manifest.webmanifest" />
+<link rel="apple-touch-icon" href="icons/icon-192.png" />
+<title>お囃子ノーツ</title>
+<style>
+  :root{
+    --bg0:#0c0c12; --bg1:#15151f; --panel:rgba(38,38,52,.72); --stroke:#34344a;
+    --gold:#ffcf4a; --left:#3aa0ff; --left2:#1366c7; --right:#ff5a5f; --right2:#c41f3f;
+    --text:#f3f1ea; --muted:#9b97ab;
+  }
+  *{ box-sizing:border-box; -webkit-tap-highlight-color:transparent; }
+  html,body{ margin:0; height:100%; color:var(--text); overflow:hidden;
+    font-family:"Hiragino Kaku Gothic ProN","Yu Gothic UI","Yu Gothic",system-ui,sans-serif;
+    background:
+      radial-gradient(1200px 700px at 80% -10%, rgba(255,90,95,.10), transparent 60%),
+      radial-gradient(1000px 600px at -10% 110%, rgba(58,160,255,.10), transparent 55%),
+      linear-gradient(180deg, var(--bg1), var(--bg0));
+    user-select:none; -webkit-user-select:none; touch-action:manipulation; }
+  #app{ position:fixed; inset:0; display:flex; flex-direction:column; }
+  canvas{ flex:1; display:block; width:100%; }
+
+  #pads{ display:flex; height:19vh; min-height:100px; gap:10px; padding:0 10px 10px; }
+  .pad{ flex:1; display:flex; flex-direction:column; align-items:center; justify-content:center; gap:4px;
+    font-size:clamp(18px,6vw,30px); font-weight:800; letter-spacing:.12em; border:none; color:#fff;
+    border-radius:20px 20px 16px 16px; transition:transform .05s, filter .06s;
+    box-shadow:0 8px 24px rgba(0,0,0,.45), inset 0 1px 0 rgba(255,255,255,.18); }
+  .pad small{ font-size:11px; font-weight:600; letter-spacing:.05em; opacity:.85; }
+  .pad:active{ transform:translateY(2px); filter:brightness(1.25); }
+  #pad-l{ background:linear-gradient(160deg,var(--left),var(--left2)); }
+  #pad-r{ background:linear-gradient(160deg,var(--right),var(--right2)); }
+
+  #bar{ position:absolute; top:0; left:0; right:0; display:flex; gap:8px; align-items:center;
+    padding:max(10px,env(safe-area-inset-top)) 14px 8px; pointer-events:none; }
+  #bar .title{ font-size:13px; color:var(--muted); letter-spacing:.04em; text-shadow:0 1px 3px #000; }
+  #bar .spacer{ flex:1; }
+
+  .btn{ background:var(--panel); color:var(--text); border:1px solid var(--stroke); border-radius:12px;
+    padding:9px 14px; font-size:13px; font-weight:600; cursor:pointer; pointer-events:auto;
+    backdrop-filter:blur(8px); -webkit-backdrop-filter:blur(8px); transition:transform .05s, border-color .15s; }
+  .btn:hover{ border-color:#56566e; } .btn:active{ transform:scale(.97); }
+  .btn.primary{ background:linear-gradient(135deg,#ff7a5a,#e0344f); border:none; color:#fff;
+    box-shadow:0 8px 22px rgba(224,52,79,.4); }
+
+  .screen{ position:absolute; inset:0; display:flex; flex-direction:column; align-items:center; justify-content:center;
+    gap:18px; padding:28px; text-align:center; overflow:auto;
+    background:radial-gradient(800px 500px at 50% 20%, rgba(40,40,58,.6), rgba(10,10,16,.92)); backdrop-filter:blur(3px); }
+  .screen.hidden{ display:none; }
+  h1{ margin:0; font-size:clamp(30px,9vw,52px); font-weight:900; letter-spacing:.04em;
+    background:linear-gradient(180deg,#ffe39a,#ffb43a 60%,#ff7a3a); -webkit-background-clip:text; background-clip:text; color:transparent;
+    filter:drop-shadow(0 3px 0 rgba(122,59,0,.5)); }
+  .sub{ color:var(--muted); margin-top:-8px; font-size:14px; }
+  .card{ background:var(--panel); border:1px solid var(--stroke); border-radius:18px; padding:18px;
+    display:flex; flex-direction:column; gap:14px; min-width:min(360px,86vw); backdrop-filter:blur(10px);
+    box-shadow:0 20px 50px rgba(0,0,0,.45); }
+  select{ font-size:16px; padding:11px 14px; border-radius:12px; border:1px solid var(--stroke);
+    background:#1b1b26; color:var(--text); width:100%; }
+  .row{ display:flex; gap:10px; flex-wrap:wrap; justify-content:center; align-items:center; }
+  .slabel{ display:flex; align-items:center; gap:10px; font-size:13px; color:var(--muted); }
+  input[type=range]{ -webkit-appearance:none; appearance:none; height:6px; border-radius:6px; flex:1;
+    background:linear-gradient(90deg,var(--gold),#7a3b00); outline:none; }
+  input[type=range]::-webkit-slider-thumb{ -webkit-appearance:none; width:20px; height:20px; border-radius:50%;
+    background:#fff; border:3px solid var(--gold); box-shadow:0 2px 6px rgba(0,0,0,.5); cursor:pointer; }
+  input[type=range]::-moz-range-thumb{ width:18px; height:18px; border-radius:50%; background:#fff; border:3px solid var(--gold); cursor:pointer; }
+  .hint{ color:var(--muted); font-size:12px; max-width:380px; line-height:1.7; }
+  input[type=file]{ display:none; } label.file{ cursor:pointer; }
+
+  /* 編集 */
+  #editor{ position:absolute; inset:0; background:linear-gradient(180deg,var(--bg1),var(--bg0)); display:none; flex-direction:column; }
+  #editor.show{ display:flex; }
+  #ed-head{ padding:max(10px,env(safe-area-inset-top)) 12px 8px; display:flex; flex-direction:column; gap:8px;
+    border-bottom:1px solid var(--stroke); background:rgba(16,16,24,.6); }
+  #ed-head .line{ display:flex; gap:8px; align-items:center; flex-wrap:wrap; }
+  #ed-head strong{ font-size:15px; font-weight:800; }
+  #ed-head .slabel{ flex:1; min-width:150px; }
+  #wordInput{ background:#1b1b26; color:var(--text); border:1px solid var(--stroke); border-radius:10px; padding:8px 10px; font-size:14px; width:130px; }
+  .chipbtn{ background:#23232f; border:1px solid #4a4456; color:#fff; border-radius:16px; padding:6px 12px; font-size:13px; font-weight:600; cursor:pointer; }
+  .chipbtn:active{ transform:scale(.96); }
+  .colhdr{ display:flex; }
+  .colhdr div{ flex:1; text-align:center; font-size:11px; color:var(--muted); padding:3px 0; letter-spacing:.05em; }
+  #railScroll{ flex:1; overflow:auto; position:relative; }
+  #railInner{ position:relative; width:100%; }
+  .gline{ position:absolute; top:0; bottom:0; width:2px; transform:translateX(-50%); }
+  .gline.l{ background:linear-gradient(var(--left),transparent); opacity:.4; }
+  .gline.c{ background:linear-gradient(var(--gold),transparent); opacity:.35; }
+  .gline.r{ background:linear-gradient(var(--right),transparent); opacity:.4; }
+  .tick{ position:absolute; left:0; right:0; border-top:1px dashed #22222c; }
+  .tick span{ position:absolute; left:3px; top:-8px; font-size:10px; color:#56566a; }
+  .chip{ position:absolute; transform:translate(-50%,-50%); cursor:grab; touch-action:none; z-index:3; }
+  .chip:active{ cursor:grabbing; }
+  .chip.note{ width:44px; height:44px; border-radius:50%; border:3px solid rgba(255,255,255,.9);
+    display:flex; align-items:center; justify-content:center; color:#fff; font-size:13px; font-weight:800;
+    box-shadow:0 4px 14px rgba(0,0,0,.5); }
+  .chip.note.l{ background:radial-gradient(circle at 35% 30%,#7bc0ff,var(--left2)); }
+  .chip.note.r{ background:radial-gradient(circle at 35% 30%,#ff9a8f,var(--right2)); }
+  .chip.word{ background:linear-gradient(160deg,#2e2e3c,#23232f); border:2px solid var(--gold); border-radius:12px;
+    padding:8px 12px; color:#fff; font-weight:800; white-space:nowrap; font-size:15px; box-shadow:0 4px 14px rgba(0,0,0,.5); }
+  .chip .x{ position:absolute; top:-9px; right:-9px; width:20px; height:20px; border-radius:50%;
+    background:#000; color:#fff; font-size:13px; line-height:18px; text-align:center; border:1px solid #888; }
+  .selband{ position:absolute; left:0; right:0; z-index:1;
+    background:repeating-linear-gradient(45deg,rgba(255,207,74,.10),rgba(255,207,74,.10) 8px,rgba(255,207,74,.05) 8px,rgba(255,207,74,.05) 16px);
+    border-top:2px dashed var(--gold); border-bottom:2px dashed var(--gold); }
+  .selh{ position:absolute; left:50%; transform:translateX(-50%); width:64px; height:18px; border-radius:9px;
+    background:var(--gold); color:#3a2300; font-size:11px; font-weight:800; display:flex; align-items:center; justify-content:center;
+    cursor:ns-resize; touch-action:none; z-index:4; box-shadow:0 2px 6px rgba(0,0,0,.5); }
+  .selh.top{ top:-9px; } .selh.bot{ bottom:-9px; }
+  #ed-foot{ display:flex; gap:8px; padding:9px 12px max(9px,env(safe-area-inset-bottom)); background:rgba(16,16,24,.85); border-top:1px solid var(--stroke); }
+  #ed-foot .btn{ flex:1; text-align:center; }
+  .small{ font-size:11px; color:var(--muted); }
+</style>
+</head>
+<body>
+<div id="app">
+  <canvas id="cv"></canvas>
+  <div id="pads">
+    <button class="pad" id="pad-l">左手<small>LEFT</small></button>
+    <button class="pad" id="pad-r">右手<small>RIGHT</small></button>
+  </div>
+
+  <div id="bar">
+    <span class="title" id="songTitle"></span>
+    <span class="spacer"></span>
+    <button class="btn" id="menuBtn">メニュー</button>
+  </div>
+
+  <!-- スタート -->
+  <div class="screen" id="overlay">
+    <h1>お囃子ノーツ</h1>
+    <div class="sub">左右の音玉と中央の歌が降ってくる、太鼓の稽古アプリ</div>
+    <div class="card">
+      <select id="songSelect"></select>
+      <div class="slabel">速さ <input type="range" id="ov-speed" min="1.2" max="4.5" step="0.1"><span id="ov-speed-v" class="small"></span></div>
+      <div class="row">
+        <button class="btn primary" id="start">▶ はじめる</button>
+        <button class="btn" id="toEditor">✎ 譜面を編集</button>
+      </div>
+      <div class="row">
+        <label class="btn file">JSONを読み込む<input type="file" id="fileInput" accept=".json,application/json" /></label>
+      </div>
+    </div>
+    <div class="hint">青い玉＝左手、赤い玉＝右手。判定マルに重なった瞬間に対応する手で叩くと玉が消えます。中央は歌（テケ・トコ等）のガイドです。採点はありません。</div>
+  </div>
+
+  <!-- 編集 -->
+  <div id="editor">
+    <div id="ed-head">
+      <div class="line"><strong>譜面の編集</strong><span class="spacer" style="flex:1"></span><button class="btn" id="ed-back">← 戻る</button></div>
+      <div class="line">
+        <span class="slabel">速さ <input type="range" id="ed-speed" min="1.2" max="4.5" step="0.1"><span id="ed-speed-v" class="small"></span></span>
+        <span class="slabel">拡大 <input type="range" id="ed-zoom" min="50" max="200" step="5"></span>
+      </div>
+      <div class="line">
+        <button class="chipbtn" id="add-l" style="border-color:var(--left)">＋ 左手玉</button>
+        <button class="chipbtn" id="add-r" style="border-color:var(--right)">＋ 右手玉</button>
+        <input id="wordInput" placeholder="例: テケ / トコ / ソレ" />
+        <button class="chipbtn" id="add-word" style="border-color:var(--gold)">＋ 言葉</button>
+      </div>
+      <div class="line">
+        <span class="small">区間（黄色帯）:</span>
+        <button class="chipbtn" id="sel-dup">⧉ 後ろに複製</button>
+        <button class="chipbtn" id="sel-del">区間を削除</button>
+        <span id="sel-info" class="small"></span>
+      </div>
+      <div class="line"><span class="small">玉/言葉を上下ドラッグで間隔調整・玉は左右で手を変更・言葉はタップで文字編集・×で削除。黄色帯の取っ手を動かして区間を選び複製で繰り返しを作成。</span></div>
+      <div class="colhdr"><div>左手</div><div>歌（中央）</div><div>右手</div></div>
+    </div>
+    <div id="railScroll"><div id="railInner"></div></div>
+    <div id="ed-foot">
+      <button class="btn primary" id="ed-play">▶ 試す</button>
+      <button class="btn" id="ed-export">JSON保存</button>
+    </div>
+  </div>
+</div>
+
+<script>
+/* ============== 既定譜面（旧形式。読み込み時に新形式へ変換） ============== */
+const SAMPLE = { title:"祭囃子（サンプル）", bpm:120, scrollTime:2.4, gap:0.18,
+  notes:[
+    {beat:1,text:"テン",balls:1},{beat:2,text:"テン",balls:1},{beat:3,text:"テケ",balls:2},{beat:4,text:"テン",balls:1},
+    {beat:5,text:"ドン",balls:1},{beat:6,text:"トコ",balls:1},{beat:7,text:"テケ",balls:2},{beat:8,text:"テン",balls:1},
+    {beat:9,text:"スットン",balls:1},{beat:10,text:"スットン",balls:1},{beat:11,text:"テケ",balls:2},{beat:12,text:"ドン",balls:1}
+  ]};
+const AUTO = { title:"録音から自動生成（下書き）", bpm:112, scrollTime:2.6, gap:0.16,
+  notes:[1.79,2.81,4.67,5.6,6.22,6.85,7.48,8.1,8.75,9.78,10.57,11.75,12.47,14.42,15.86,16.74,17.67,18.3,18.78,19.3,
+    20.18,20.9,21.57,23.17,23.71,24.2,24.73,25.63,26.33,27.05,28.65,29.56,31.58,32.28,33.88,34.6,35.16,36.04,36.76]
+    .map(t=>({time:t,text:"テン",balls:1})) };
+function clone(o){ return JSON.parse(JSON.stringify(o)); }
+
+function migrate(s){
+  if(s._v===2) return s;
+  const spb=60/(s.bpm||120), gap=s.gap||0.16;
+  const notes=[], words=[]; let hand=0;
+  for(const n of (s.notes||[])){
+    const base=(typeof n.time==="number")? n.time : ((n.beat||0)*spb);
+    if(n.text) words.push({time:+base.toFixed(2), text:n.text});
+    const cnt=Math.max(1,Math.min(2,n.balls||1));
+    for(let i=0;i<cnt;i++){ notes.push({time:+(base+i*gap).toFixed(2), hand:(hand++%2===0)?"L":"R"}); }
+  }
+  return { title:s.title, scrollTime:s.scrollTime||2.6, notes, words, _v:2 };
+}
+
+/* ============== 状態 + 自動保存 ============== */
+const LS="ohayashi_charts_v2";
+const charts={ "録音から自動生成":migrate(clone(AUTO)), "祭囃子サンプル":migrate(clone(SAMPLE)) };
+let currentKey="録音から自動生成";
+let score=null;
+function save(){ try{ localStorage.setItem(LS, JSON.stringify({charts,currentKey})); }catch(e){} }
+(function loadSaved(){ try{ const raw=localStorage.getItem(LS); if(raw){ const o=JSON.parse(raw);
+  if(o.charts) for(const k in o.charts) charts[k]=migrate(o.charts[k]); if(o.currentKey&&charts[o.currentKey]) currentKey=o.currentKey; } }catch(e){} })();
+if(!charts[currentKey]) currentKey=Object.keys(charts)[0];
+
+/* ============== 太鼓音 ============== */
+let actx=null;
+function audio(){ if(!actx) actx=new (window.AudioContext||window.webkitAudioContext)(); return actx; }
+function playDon(high){
+  const c=audio(), t=c.currentTime, f0=high?470:360;
+  const o=c.createOscillator(), g=c.createGain();
+  o.type="sine"; o.frequency.setValueAtTime(f0,t); o.frequency.exponentialRampToValueAtTime(f0*0.5,t+0.12);
+  g.gain.setValueAtTime(0.0001,t); g.gain.exponentialRampToValueAtTime(0.85,t+0.004); g.gain.exponentialRampToValueAtTime(0.0001,t+0.22);
+  o.connect(g).connect(c.destination); o.start(t); o.stop(t+0.24);
+  const n=Math.floor(c.sampleRate*0.04), buf=c.createBuffer(1,n,c.sampleRate), d=buf.getChannelData(0);
+  for(let i=0;i<n;i++) d[i]=(Math.random()*2-1)*(1-i/n);
+  const s=c.createBufferSource(); s.buffer=buf;
+  const bf=c.createBiquadFilter(); bf.type="bandpass"; bf.frequency.value=high?1700:1200; bf.Q.value=0.9;
+  const g2=c.createGain(); g2.gain.setValueAtTime(0.35,t); g2.gain.exponentialRampToValueAtTime(0.0001,t+0.045);
+  s.connect(bf).connect(g2).connect(c.destination); s.start(t);
+}
+
+/* ============== プレイ描画 ============== */
+const cv=document.getElementById("cv"), ctx=cv.getContext("2d");
+let W=0,H=0,DPR=1,judgeY=0,topY=0,xL=0,xC=0,xR=0;
+function resize(){ DPR=Math.min(2,window.devicePixelRatio||1); W=cv.clientWidth; H=cv.clientHeight;
+  cv.width=W*DPR; cv.height=H*DPR; ctx.setTransform(DPR,0,0,DPR,0,0);
+  judgeY=H-86; topY=26; xL=W*0.25; xC=W*0.5; xR=W*0.75; }
+window.addEventListener("resize",resize);
+
+let pBalls=[], pWords=[], startAt=0, playing=false, flashL=0, flashR=0;
+const LEAD=2.2, HITWIN=0.28;
+
+function buildPlay(){
+  pBalls=(score.notes||[]).map(n=>({t:n.time,hand:n.hand||"R",hit:false,hitAt:0})).sort((a,b)=>a.t-b.t);
+  pWords=(score.words||[]).map(w=>({t:w.time,text:w.text||""})).sort((a,b)=>a.t-b.t);
+}
+function setScore(k){ currentKey=k; charts[k]=migrate(charts[k]); score=charts[k];
+  document.getElementById("songTitle").textContent=score.title||""; buildPlay(); }
+function startPlay(){ buildPlay(); resize(); const c=audio(); if(c.state==="suspended")c.resume();
+  startAt=c.currentTime+LEAD; playing=true; hide(overlay); editor.classList.remove("show"); }
+
+function hit(hand){
+  playDon(hand==="L"); if(navigator.vibrate) navigator.vibrate(10);
+  if(hand==="L") flashL=performance.now()+90; else flashR=performance.now()+90;
+  if(!playing) return;
+  const t=audio().currentTime-startAt; let best=-1,bd=HITWIN;
+  for(let i=0;i<pBalls.length;i++){ const b=pBalls[i]; if(b.hit||b.hand!==hand) continue;
+    const d=Math.abs(b.t-t); if(d<bd){bd=d;best=i;} }
+  if(best>=0){ pBalls[best].hit=true; pBalls[best].hitAt=performance.now(); }
+}
+
+function draw(){
+  requestAnimationFrame(draw);
+  ctx.clearRect(0,0,W,H);
+  // レーンの淡い帯
+  for(const [x,c1] of [[xL,"58,160,255"],[xR,"255,90,95"]]){
+    const g=ctx.createLinearGradient(x-40,0,x+40,0);
+    g.addColorStop(0,"rgba("+c1+",0)"); g.addColorStop(.5,"rgba("+c1+",.07)"); g.addColorStop(1,"rgba("+c1+",0)");
+    ctx.fillStyle=g; ctx.fillRect(x-46,0,92,H);
+  }
+  // 判定ライン
+  ctx.strokeStyle="rgba(255,207,74,.28)"; ctx.lineWidth=2;
+  ctx.beginPath(); ctx.moveTo(0,judgeY); ctx.lineTo(W,judgeY); ctx.stroke();
+  drawTarget(xL, performance.now()<flashL, "--left");
+  drawTarget(xR, performance.now()<flashR, "--right");
+
+  if(playing && score){
+    const t=audio().currentTime-startAt, scroll=score.scrollTime, span=judgeY-topY; let alive=false;
+    for(const w of pWords){ const dt=w.t-t; if(dt>scroll){alive=true;continue;} if(dt<-0.5)continue; alive=true;
+      drawWord(xC, judgeY-(dt/scroll)*span, w.text, dt<0?Math.max(0,1+dt/0.5):1); }
+    for(const b of pBalls){
+      if(b.hit){ const age=(performance.now()-b.hitAt)/180; if(age<1){ alive=true; const x=b.hand==="L"?xL:xR;
+        ctx.save(); ctx.globalAlpha=1-age; ctx.beginPath(); ctx.arc(x,judgeY,30+age*26,0,Math.PI*2);
+        ctx.strokeStyle="#ffe08a"; ctx.lineWidth=5; ctx.shadowColor="#ffcf4a"; ctx.shadowBlur=16; ctx.stroke(); ctx.restore(); } continue; }
+      const dt=b.t-t; if(dt>scroll){alive=true;continue;} if(dt<-0.45)continue; alive=true;
+      drawBall(b.hand==="L"?xL:xR, judgeY-(dt/scroll)*span, b.hand, dt<0?Math.max(0,1+dt/0.45):1);
+    }
+    if(!alive && (pBalls.length||pWords.length)){ ctx.fillStyle="rgba(255,255,255,.9)"; ctx.textAlign="center";
+      ctx.font="800 24px sans-serif"; ctx.fillText("おつかれさま！",W/2,judgeY-120); }
+  } else {
+    ctx.fillStyle="rgba(255,255,255,.22)"; ctx.textAlign="center"; ctx.font="14px sans-serif";
+    ctx.fillText("メニューから「はじめる」",W/2,judgeY-100);
+  }
+}
+function drawTarget(x,flash,cssv){ ctx.save(); ctx.beginPath(); ctx.arc(x,judgeY,30,0,Math.PI*2);
+  ctx.strokeStyle=flash?"#fff":getCSS(cssv); ctx.lineWidth=flash?7:4;
+  ctx.shadowColor=getCSS(cssv); ctx.shadowBlur=flash?22:8; ctx.stroke(); ctx.restore(); }
+function drawBall(x,y,hand,a){ const r=Math.min(30,W*0.092); ctx.save(); ctx.globalAlpha=a;
+  const col=getCSS(hand==="L"?"--left":"--right");
+  ctx.beginPath(); ctx.arc(x,y,r,0,Math.PI*2); ctx.fillStyle=col; ctx.shadowColor=col; ctx.shadowBlur=18; ctx.fill();
+  ctx.shadowBlur=0; ctx.lineWidth=3; ctx.strokeStyle="rgba(255,255,255,.9)"; ctx.stroke();
+  ctx.beginPath(); ctx.arc(x-r*0.3,y-r*0.3,r*0.32,0,Math.PI*2); ctx.fillStyle="rgba(255,255,255,.35)"; ctx.fill(); ctx.restore(); }
+function drawWord(x,y,text,a){ ctx.save(); ctx.globalAlpha=a;
+  ctx.font="800 19px 'Hiragino Kaku Gothic ProN',sans-serif"; ctx.textAlign="center"; ctx.textBaseline="middle";
+  const w=Math.max(64,ctx.measureText(text).width+30), h=40; roundRect(x-w/2,y-h/2,w,h,12);
+  ctx.fillStyle="rgba(34,34,46,.95)"; ctx.fill(); ctx.lineWidth=2; ctx.strokeStyle=getCSS("--gold");
+  ctx.shadowColor="rgba(255,207,74,.5)"; ctx.shadowBlur=10; ctx.stroke(); ctx.shadowBlur=0;
+  ctx.fillStyle="#fff"; ctx.fillText(text,x,y); ctx.restore(); }
+function roundRect(x,y,w,h,r){ ctx.beginPath(); ctx.moveTo(x+r,y); ctx.arcTo(x+w,y,x+w,y+h,r); ctx.arcTo(x+w,y+h,x,y+h,r); ctx.arcTo(x,y+h,x,y,r); ctx.arcTo(x,y,x+w,y,r); ctx.closePath(); }
+function getCSS(v){ return getComputedStyle(document.documentElement).getPropertyValue(v).trim()||"#fff"; }
+
+/* ============== 入力 ============== */
+document.getElementById("pad-l").addEventListener("pointerdown",e=>{e.preventDefault();hit("L");});
+document.getElementById("pad-r").addEventListener("pointerdown",e=>{e.preventDefault();hit("R");});
+cv.addEventListener("pointerdown",e=>{ if(playing) hit(e.clientX<cv.clientWidth/2?"L":"R"); });
+window.addEventListener("keydown",e=>{ if(e.repeat||!playing)return;
+  if(e.key==="f"||e.key==="d"||e.key==="ArrowLeft") hit("L");
+  if(e.key==="j"||e.key==="k"||e.key==="ArrowRight"||e.key===" ") hit("R"); });
+
+/* ============== メニュー ============== */
+const overlay=document.getElementById("overlay"), sel=document.getElementById("songSelect"), editor=document.getElementById("editor");
+const ovSpeed=document.getElementById("ov-speed"), ovSpeedV=document.getElementById("ov-speed-v");
+function show(el){ el.classList.remove("hidden"); } function hide(el){ el.classList.add("hidden"); }
+function fillSongs(){ sel.innerHTML=""; for(const k of Object.keys(charts)){ const o=document.createElement("option");
+  o.value=k; o.textContent=(charts[k].title)||k; sel.appendChild(o); } sel.value=currentKey; }
+function syncOverlay(){ fillSongs(); ovSpeed.value=score.scrollTime; ovSpeedV.textContent=speedText(score.scrollTime); }
+function speedText(v){ return v.toFixed(1)+"秒"+(v<2?"（速い）":v>3.5?"（遅い）":""); }
+
+fillSongs(); setScore(currentKey); syncOverlay();
+sel.addEventListener("change",()=>{ setScore(sel.value); ovSpeed.value=score.scrollTime; ovSpeedV.textContent=speedText(score.scrollTime); save(); });
+ovSpeed.addEventListener("input",()=>{ score.scrollTime=parseFloat(ovSpeed.value); ovSpeedV.textContent=speedText(score.scrollTime); save(); });
+document.getElementById("start").addEventListener("click",startPlay);
+document.getElementById("menuBtn").addEventListener("click",()=>{ playing=false; editor.classList.remove("show"); syncOverlay(); show(overlay); });
+document.getElementById("fileInput").addEventListener("change",ev=>{ const f=ev.target.files[0]; if(!f)return; const rd=new FileReader();
+  rd.onload=()=>{ try{ const s=migrate(JSON.parse(rd.result)); charts[f.name]=s; setScore(f.name); syncOverlay(); save(); }
+    catch(err){ alert("JSON読込エラー: "+err.message); } }; rd.readAsText(f); });
+
+/* ============== 編集（ドラッグ + 区間コピー） ============== */
+const railScroll=document.getElementById("railScroll"), railInner=document.getElementById("railInner");
+const edSpeed=document.getElementById("ed-speed"), edSpeedV=document.getElementById("ed-speed-v"), edZoom=document.getElementById("ed-zoom");
+const selInfo=document.getElementById("sel-info");
+const COLX={L:22,C:50,R:78}; let zoom=90, selStart=0, selEnd=2, band=null;
+
+function openEditor(){ score=charts[currentKey]=migrate(charts[currentKey]);
+  edSpeed.value=score.scrollTime; edZoom.value=zoom; updSpeedLabel(); renderRail();
+  playing=false; hide(overlay); editor.classList.add("show"); }
+function updSpeedLabel(){ edSpeedV.textContent=speedText(score.scrollTime); }
+function maxTime(){ let m=0; for(const n of score.notes)m=Math.max(m,n.time); for(const w of score.words)m=Math.max(m,w.time); return m; }
+function updSelInfo(){ selInfo.textContent=selStart.toFixed(2)+"〜"+selEnd.toFixed(2)+"秒"; }
+
+function renderRail(){
+  railInner.innerHTML="";
+  const dur=Math.max(maxTime()+2, 6); railInner.style.height=(dur*zoom+20)+"px";
+  for(const k of ["L","C","R"]){ const g=document.createElement("div"); g.className="gline "+k.toLowerCase(); g.style.left=COLX[k]+"%"; railInner.appendChild(g); }
+  for(let s=0;s<=Math.ceil(dur);s++){ const tk=document.createElement("div"); tk.className="tick"; tk.style.top=(s*zoom)+"px"; tk.innerHTML='<span>'+s+'s</span>'; railInner.appendChild(tk); }
+  // 区間バンド
+  band=document.createElement("div"); band.className="selband";
+  const h1=document.createElement("div"); h1.className="selh top"; h1.textContent="始";
+  const h2=document.createElement("div"); h2.className="selh bot"; h2.textContent="終";
+  band.append(h1,h2); railInner.appendChild(band); updBand(); dragHandle(h1,"start"); dragHandle(h2,"end");
+  // チップ
+  score.notes.forEach(n=>railInner.appendChild(makeChip("note",n)));
+  score.words.forEach(w=>railInner.appendChild(makeChip("word",w)));
+  updSelInfo();
+}
+function updBand(){ if(!band)return; band.style.top=(selStart*zoom)+"px"; band.style.height=((selEnd-selStart)*zoom)+"px"; }
+function makeChip(kind,obj){ const el=document.createElement("div");
+  if(kind==="note"){ el.className="chip note "+(obj.hand==="L"?"l":"r"); el.appendChild(document.createTextNode(obj.hand==="L"?"左":"右")); el.style.left=COLX[obj.hand]+"%"; }
+  else { el.className="chip word"; el.appendChild(document.createTextNode(obj.text||"　")); el.style.left=COLX.C+"%"; }
+  el.style.top=(obj.time*zoom)+"px";
+  const x=document.createElement("div"); x.className="x"; x.textContent="×"; el.appendChild(x);
+  attachDrag(el,obj,kind); return el; }
+function attachDrag(el,obj,kind){ let sx,sy,moved;
+  el.addEventListener("pointerdown",e=>{ if(e.target.classList.contains("x")){ del(obj,kind); return; }
+    e.preventDefault(); el.setPointerCapture(e.pointerId); el._drag=true; sx=e.clientX; sy=e.clientY; moved=false; });
+  el.addEventListener("pointermove",e=>{ if(!el._drag)return;
+    if(Math.abs(e.clientX-sx)>5||Math.abs(e.clientY-sy)>5) moved=true;
+    const rect=railInner.getBoundingClientRect();
+    let tt=Math.max(0,(e.clientY-rect.top)/zoom); tt=Math.round(tt/0.05)*0.05; obj.time=+tt.toFixed(2); el.style.top=(obj.time*zoom)+"px";
+    if(kind==="note"){ const hand=(e.clientX-rect.left)<rect.width*0.5?"L":"R"; obj.hand=hand; el.style.left=COLX[hand]+"%";
+      el.classList.toggle("l",hand==="L"); el.classList.toggle("r",hand==="R"); el.firstChild.nodeValue=hand==="L"?"左":"右"; } });
+  el.addEventListener("pointerup",()=>{ if(!el._drag)return; el._drag=false;
+    if(!moved && kind==="word"){ const t=prompt("言葉を入力（例: テケ / トコ / ソレ）",obj.text||""); if(t!==null){ obj.text=t.trim(); el.firstChild.nodeValue=obj.text||"　"; } }
+    save(); }); }
+function dragHandle(el,which){ el.addEventListener("pointerdown",e=>{ e.preventDefault(); e.stopPropagation(); el.setPointerCapture(e.pointerId); el._d=true; });
+  el.addEventListener("pointermove",e=>{ if(!el._d)return; const rect=railInner.getBoundingClientRect();
+    let tt=Math.max(0,(e.clientY-rect.top)/zoom); tt=Math.round(tt/0.05)*0.05;
+    if(which==="start") selStart=Math.min(tt,selEnd-0.1); else selEnd=Math.max(tt,selStart+0.1);
+    updBand(); updSelInfo(); });
+  el.addEventListener("pointerup",()=>{ el._d=false; }); }
+function del(obj,kind){ const arr=kind==="note"?score.notes:score.words; const i=arr.indexOf(obj); if(i>=0){ arr.splice(i,1); renderRail(); save(); } }
+function centerTime(){ return +(((railScroll.scrollTop+railScroll.clientHeight/2)/zoom)).toFixed(2); }
+
+document.getElementById("add-l").addEventListener("click",()=>{ score.notes.push({time:centerTime(),hand:"L"}); renderRail(); save(); });
+document.getElementById("add-r").addEventListener("click",()=>{ score.notes.push({time:centerTime(),hand:"R"}); renderRail(); save(); });
+document.getElementById("add-word").addEventListener("click",()=>{ const w=document.getElementById("wordInput").value.trim()||"テケ";
+  score.words.push({time:centerTime(),text:w}); renderRail(); save(); });
+document.getElementById("sel-dup").addEventListener("click",()=>{ const len=+(selEnd-selStart).toFixed(2); if(len<=0.05){alert("黄色帯の取っ手を動かして区間を指定してください");return;}
+  const a=Math.min(selStart,selEnd)-0.001, b=Math.max(selStart,selEnd)+0.001;
+  score.notes.filter(n=>n.time>=a&&n.time<=b).forEach(n=>score.notes.push({time:+(n.time+len).toFixed(2),hand:n.hand}));
+  score.words.filter(w=>w.time>=a&&w.time<=b).forEach(w=>score.words.push({time:+(w.time+len).toFixed(2),text:w.text}));
+  selStart=+(selStart+len).toFixed(2); selEnd=+(selEnd+len).toFixed(2); renderRail(); save();
+  railScroll.scrollTop=Math.max(0, selStart*zoom-railScroll.clientHeight*0.4); });
+document.getElementById("sel-del").addEventListener("click",()=>{ const a=Math.min(selStart,selEnd)-0.001, b=Math.max(selStart,selEnd)+0.001;
+  if(!confirm("この区間の玉と言葉を削除しますか？")) return;
+  score.notes=score.notes.filter(n=>!(n.time>=a&&n.time<=b)); score.words=score.words.filter(w=>!(w.time>=a&&w.time<=b)); renderRail(); save(); });
+edSpeed.addEventListener("input",()=>{ score.scrollTime=parseFloat(edSpeed.value); updSpeedLabel(); save(); });
+edZoom.addEventListener("input",()=>{ zoom=parseInt(edZoom.value); renderRail(); });
+document.getElementById("ed-back").addEventListener("click",()=>{ editor.classList.remove("show"); buildPlay(); syncOverlay(); show(overlay); save(); });
+document.getElementById("ed-play").addEventListener("click",()=>{ editor.classList.remove("show"); startPlay(); save(); });
+document.getElementById("ed-export").addEventListener("click",()=>{ score.notes.sort((a,b)=>a.time-b.time); score.words.sort((a,b)=>a.time-b.time);
+  const blob=new Blob([JSON.stringify(score,null,2)],{type:"application/json"}); const a=document.createElement("a");
+  a.href=URL.createObjectURL(blob); a.download=(score.title||"chart").replace(/\s+/g,"_")+".json"; a.click(); });
+document.getElementById("toEditor").addEventListener("click",openEditor);
+
+/* ============== 起動 ============== */
+resize(); draw();
+if("serviceWorker" in navigator){ window.addEventListener("load",()=>navigator.serviceWorker.register("sw.js").catch(()=>{})); }
+</script>
+</body>
+</html>
