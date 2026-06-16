@@ -1,4 +1,4 @@
-const CACHE = "ohayashi-notes-v4";
+const CACHE = "ohayashi-notes-v5";
 const ASSETS = [
   "./",
   "./index.html",

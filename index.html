@@ -103,9 +103,13 @@
     padding:8px 12px; color:#fff; font-weight:800; white-space:nowrap; font-size:15px; box-shadow:0 4px 14px rgba(0,0,0,.5); }
   .chip .x{ position:absolute; top:-9px; right:-9px; width:20px; height:20px; border-radius:50%;
     background:#000; color:#fff; font-size:13px; line-height:18px; text-align:center; border:1px solid #888; }
-  .selband{ position:absolute; left:0; right:0; z-index:1;
-    background:repeating-linear-gradient(45deg,rgba(255,207,74,.10),rgba(255,207,74,.10) 8px,rgba(255,207,74,.05) 8px,rgba(255,207,74,.05) 16px);
+  .selband{ position:absolute; left:0; right:0; z-index:1; cursor:grab; touch-action:none;
+    background:repeating-linear-gradient(45deg,rgba(255,207,74,.12),rgba(255,207,74,.12) 8px,rgba(255,207,74,.05) 8px,rgba(255,207,74,.05) 16px);
     border-top:2px dashed var(--gold); border-bottom:2px dashed var(--gold); }
+  .selband:active{ cursor:grabbing; }
+  #wordPalette{ display:flex; gap:6px; flex-wrap:wrap; }
+  #wordPalette button{ background:#23232f; border:1px solid #4a4456; color:#fff; border-radius:14px; padding:5px 10px; font-size:13px; font-weight:700; cursor:pointer; }
+  #wordPalette button:active{ transform:scale(.95); background:#3a3450; }
   .selh{ position:absolute; left:50%; transform:translateX(-50%); width:64px; height:18px; border-radius:9px;
     background:var(--gold); color:#3a2300; font-size:11px; font-weight:800; display:flex; align-items:center; justify-content:center;
     cursor:ns-resize; touch-action:none; z-index:4; box-shadow:0 2px 6px rgba(0,0,0,.5); }
@@ -158,9 +162,10 @@
       <div class="line">
         <button class="chipbtn" id="add-l" style="border-color:var(--left)">＋ 左手玉</button>
         <button class="chipbtn" id="add-r" style="border-color:var(--right)">＋ 右手玉</button>
-        <input id="wordInput" placeholder="例: テケ / トコ / ソレ" />
+        <input id="wordInput" placeholder="自由入力" />
         <button class="chipbtn" id="add-word" style="border-color:var(--gold)">＋ 言葉</button>
       </div>
+      <div class="line"><span class="small">テンプレ:</span><div id="wordPalette"></div></div>
       <div class="line">
         <span class="small">区間（黄色帯）:</span>
         <button class="chipbtn" id="sel-dup">⧉ 後ろに複製</button>
@@ -241,7 +246,7 @@ function resize(){ DPR=Math.min(2,window.devicePixelRatio||1); W=cv.clientWidth;
 window.addEventListener("resize",resize);
 
 let pBalls=[], pWords=[], startAt=0, playing=false, flashL=0, flashR=0;
-const LEAD=2.2, HITWIN=0.28;
+const LEAD=2.2, HITWIN=0.55;
 
 function buildPlay(){
   pBalls=(score.notes||[]).map(n=>({t:n.time,hand:n.hand||"R",hit:false,hitAt:0})).sort((a,b)=>a.t-b.t);
@@ -343,6 +348,13 @@ const railScroll=document.getElementById("railScroll"), railInner=document.getEl
 const edSpeed=document.getElementById("ed-speed"), edSpeedV=document.getElementById("ed-speed-v"), edZoom=document.getElementById("ed-zoom");
 const selInfo=document.getElementById("sel-info");
 const COLX={L:22,C:50,R:78}; let zoom=90, selStart=0, selEnd=2, band=null;
+const chipEls=new Map(); const MAG=0.13;
+const WORDS=["ア","テン","テレ","テ","ケ","スク","トコ","テットン","トントコ","ステスク","ス"];
+function magnetTime(tt,selfObj){ let best=tt,bd=MAG; for(const o of score.notes.concat(score.words)){ if(o===selfObj) continue;
+  const dd=Math.abs(o.time-tt); if(dd<bd){ bd=dd; best=o.time; } } return best; }
+(function buildPalette(){ const p=document.getElementById("wordPalette");
+  WORDS.forEach(wd=>{ const b=document.createElement("button"); b.textContent=wd;
+    b.addEventListener("click",()=>{ score.words.push({time:centerTime(),text:wd}); renderRail(); save(); }); p.appendChild(b); }); })();
 
 function openEditor(){ score=charts[currentKey]=migrate(charts[currentKey]);
   edSpeed.value=score.scrollTime; edZoom.value=zoom; updSpeedLabel(); renderRail();
@@ -352,19 +364,33 @@ function maxTime(){ let m=0; for(const n of score.notes)m=Math.max(m,n.time); fo
 function updSelInfo(){ selInfo.textContent=selStart.toFixed(2)+"〜"+selEnd.toFixed(2)+"秒"; }
 
 function renderRail(){
-  railInner.innerHTML="";
+  railInner.innerHTML=""; chipEls.clear();
   const dur=Math.max(maxTime()+2, 6); railInner.style.height=(dur*zoom+20)+"px";
   for(const k of ["L","C","R"]){ const g=document.createElement("div"); g.className="gline "+k.toLowerCase(); g.style.left=COLX[k]+"%"; railInner.appendChild(g); }
   for(let s=0;s<=Math.ceil(dur);s++){ const tk=document.createElement("div"); tk.className="tick"; tk.style.top=(s*zoom)+"px"; tk.innerHTML='<span>'+s+'s</span>'; railInner.appendChild(tk); }
-  // 区間バンド
+  // 区間バンド（取っ手＝端の調整、帯の本体ドラッグ＝区間ごと移動）
   band=document.createElement("div"); band.className="selband";
   const h1=document.createElement("div"); h1.className="selh top"; h1.textContent="始";
   const h2=document.createElement("div"); h2.className="selh bot"; h2.textContent="終";
-  band.append(h1,h2); railInner.appendChild(band); updBand(); dragHandle(h1,"start"); dragHandle(h2,"end");
+  band.append(h1,h2); railInner.appendChild(band); updBand(); dragHandle(h1,"start"); dragHandle(h2,"end"); attachBandDrag();
   // チップ
   score.notes.forEach(n=>railInner.appendChild(makeChip("note",n)));
   score.words.forEach(w=>railInner.appendChild(makeChip("word",w)));
   updSelInfo();
+}
+function attachBandDrag(){
+  band.addEventListener("pointerdown",e=>{
+    if(e.target!==band) return; // 取っ手やチップは除外
+    e.preventDefault(); band.setPointerCapture(e.pointerId);
+    const startY=e.clientY, a=Math.min(selStart,selEnd)-0.001, b=Math.max(selStart,selEnd)+0.001;
+    const items=score.notes.filter(n=>n.time>=a&&n.time<=b).concat(score.words.filter(w=>w.time>=a&&w.time<=b));
+    const orig=items.map(o=>({o,t:o.time})), oS=selStart, oE=selEnd; band._drag=true;
+    band._h=ev=>{ if(!band._drag)return; let dt=(ev.clientY-startY)/zoom; dt=Math.round(dt/0.05)*0.05;
+      orig.forEach(p=>{ p.o.time=Math.max(0,+(p.t+dt).toFixed(2)); const el=chipEls.get(p.o); if(el) el.style.top=(p.o.time*zoom)+"px"; });
+      selStart=Math.max(0,+(oS+dt).toFixed(2)); selEnd=+(oE+dt).toFixed(2); updBand(); updSelInfo(); };
+    band.addEventListener("pointermove",band._h);
+  });
+  band.addEventListener("pointerup",()=>{ if(band._drag){ band._drag=false; band.removeEventListener("pointermove",band._h); save(); } });
 }
 function updBand(){ if(!band)return; band.style.top=(selStart*zoom)+"px"; band.style.height=((selEnd-selStart)*zoom)+"px"; }
 function makeChip(kind,obj){ const el=document.createElement("div");
@@ -372,14 +398,14 @@ function makeChip(kind,obj){ const el=document.createElement("div");
   else { el.className="chip word"; el.appendChild(document.createTextNode(obj.text||"　")); el.style.left=COLX.C+"%"; }
   el.style.top=(obj.time*zoom)+"px";
   const x=document.createElement("div"); x.className="x"; x.textContent="×"; el.appendChild(x);
-  attachDrag(el,obj,kind); return el; }
+  attachDrag(el,obj,kind); chipEls.set(obj,el); return el; }
 function attachDrag(el,obj,kind){ let sx,sy,moved;
   el.addEventListener("pointerdown",e=>{ if(e.target.classList.contains("x")){ del(obj,kind); return; }
     e.preventDefault(); el.setPointerCapture(e.pointerId); el._drag=true; sx=e.clientX; sy=e.clientY; moved=false; });
   el.addEventListener("pointermove",e=>{ if(!el._drag)return;
     if(Math.abs(e.clientX-sx)>5||Math.abs(e.clientY-sy)>5) moved=true;
     const rect=railInner.getBoundingClientRect();
-    let tt=Math.max(0,(e.clientY-rect.top)/zoom); tt=Math.round(tt/0.05)*0.05; obj.time=+tt.toFixed(2); el.style.top=(obj.time*zoom)+"px";
+    let tt=Math.max(0,(e.clientY-rect.top)/zoom); tt=Math.round(tt/0.05)*0.05; tt=magnetTime(tt,obj); obj.time=+tt.toFixed(2); el.style.top=(obj.time*zoom)+"px";
     if(kind==="note"){ const hand=(e.clientX-rect.left)<rect.width*0.5?"L":"R"; obj.hand=hand; el.style.left=COLX[hand]+"%";
       el.classList.toggle("l",hand==="L"); el.classList.toggle("r",hand==="R"); el.firstChild.nodeValue=hand==="L"?"左":"右"; } });
   el.addEventListener("pointerup",()=>{ if(!el._drag)return; el._drag=false;
