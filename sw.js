@@ -1,10 +1,11 @@
-const CACHE = "ohayashi-notes-v5";
+const CACHE = "ohayashi-notes-v6";
 const ASSETS = [
   "./",
   "./index.html",
   "./manifest.webmanifest",
   "./scores/sample-matsuri.json",
   "./scores/auto-from-audio.json",
+  "./scores/uchikomi.json",
   "./icons/icon-192.png",
   "./icons/icon-512.png",
   "./icons/icon-512-maskable.png"
